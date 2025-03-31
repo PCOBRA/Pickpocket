@@ -4,7 +4,7 @@ game 'gta5'
 name 'ESX Pickpocket'
 author 'Pin Cobra'
 description 'Móc túi NPC với hệ thống phần thưởng và cảnh báo cảnh sát'
-version '1.0.0'
+version '1.1.0'
 
 lua54 'yes'
 
