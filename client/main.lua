@@ -111,7 +111,7 @@ AddEventHandler('pickpocket:startProgress', function()
     TaskPlayAnim(playerPed, "amb@prop_human_bum_bin@idle_b", "idle_d", 8.0, 8.0, -1, 1, 0, false, false, false)
 
     local success = exports['ox_lib']:progressBar({
-        duration = 10000,
+        duration = 150000, -- 2,5 phút (150000ms)
         label = "Đang móc túi...",
         useWhileDead = false,
         canCancel = false,
@@ -206,8 +206,18 @@ AddEventHandler('pickpocket:setPoliceBlip', function(coords)
     AddTextComponentString("🚨 Vụ móc túi")
     EndTextCommandSetBlipName(blip)
     PulseBlip(blip)
-    Wait(60000)
+    Wait(120000) -- 120 giây (120000ms)
     RemoveBlip(blip)
+end)
+
+RegisterNetEvent('pickpocket:notifyOngoing')
+AddEventHandler('pickpocket:notifyOngoing', function()
+    lib.notify({
+        title = "Cảnh báo",
+        description = "Đang có người khác thực hiện móc túi! Vui lòng chờ.",
+        type = "error",
+        position = "center-left"
+    })
 end)
 
 RegisterKeyMapping('pickpocket', '<FONT FACE = "arial font">~y~Móc túi NPC', 'keyboard', 'E')
