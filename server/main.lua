@@ -1,5 +1,9 @@
 local ESX = exports["es_extended"]:getSharedObject()
 
+-- Biến toàn cục để theo dõi cooldown và trạng thái móc túi
+local lastPickpocketTime = 0
+local isPickpocketActive = false
+
 -- Hàm gửi webhook Discord
 local function sendToDiscord(message)
     if Config.WebhookURL and Config.WebhookURL ~= 'YOUR_DISCORD_WEBHOOK_URL_HERE' then
@@ -39,6 +43,20 @@ local function isInRestrictedZone(coords)
     return false
 end
 
+-- Chọn phần thưởng dựa trên tỷ lệ
+local function getReward()
+    local roll = math.random(1, 100)
+    local cumulativeChance = 0
+
+    for _, reward in ipairs(Config.Rewards) do
+        cumulativeChance = cumulativeChance + reward.chance
+        if roll <= cumulativeChance then
+            return reward.item
+        end
+    end
+    return Config.Rewards[#Config.Rewards].item -- Trả về vật phẩm cuối cùng nếu không trúng
+end
+
 RegisterNetEvent('pickpocket:checkPolice')
 AddEventHandler('pickpocket:checkPolice', function(npcNetId)
     local src = source
@@ -50,31 +68,36 @@ AddEventHandler('pickpocket:checkPolice', function(npcNetId)
     local currentTime = os.time()
     local playerName = xPlayer.getName() or "Unknown"
 
-    playerCooldowns = playerCooldowns or {}
-    if Config.Cooldown.enable then
-        local cooldownTime = Config.Cooldown.time
-        if playerCooldowns[src] and (currentTime - playerCooldowns[src]) < cooldownTime then
-            local remaining = cooldownTime - (currentTime - playerCooldowns[src])
-            TriggerClientEvent('ox_lib:notify', src, {
-                title = "Cảnh báo",
-                description = "Bạn cần chờ " .. remaining .. " giây trước khi móc túi tiếp!",
-                type = "error",
-                position = "center-left"
-            })
-            sendToDiscord("Người chơi " .. playerName .. " (ID: " .. src .. ") thất bại khi móc túi: Còn " .. remaining .. " giây cooldown.")
-            return
-        end
+    -- Kiểm tra xem có sự kiện móc túi đang diễn ra không
+    if isPickpocketActive then
+        TriggerClientEvent('pickpocket:notifyOngoing', src)
+        sendToDiscord("Người chơi " .. playerName .. " (ID: " .. src .. ") thất bại khi móc túi: Có người khác đang thực hiện.")
+        return
     end
 
-    local policePlayers = ESX.GetExtendedPlayers('job', 'police')
-    if #policePlayers < Config.MinPolice then
+    -- Kiểm tra cooldown toàn server
+    if (currentTime - lastPickpocketTime) < Config.GlobalCooldown then
+        local remaining = Config.GlobalCooldown - (currentTime - lastPickpocketTime)
         TriggerClientEvent('ox_lib:notify', src, {
             title = "Cảnh báo",
-            description = "Không đủ cảnh sát để thực hiện hành vi này!",
+            description = "Hệ thống đang tạm khóa! Chờ " .. remaining .. " giây để móc túi tiếp.",
             type = "error",
             position = "center-left"
         })
-        sendToDiscord("Người chơi " .. playerName .. " (ID: " .. src .. ") thất bại khi móc túi: Không đủ cảnh sát (" .. #policePlayers .. "/" .. Config.MinPolice .. ").")
+        sendToDiscord("Người chơi " .. playerName .. " (ID: " .. src .. ") thất bại khi móc túi: Còn " .. remaining .. " giây cooldown toàn server.")
+        return
+    end
+
+    -- Kiểm tra số lượng cảnh sát
+    local policeCount = #ESX.GetExtendedPlayers('job', 'police')
+    if policeCount < Config.MinPolice then
+        TriggerClientEvent('ox_lib:notify', src, {
+            title = "Cảnh báo",
+            description = "Không đủ cảnh sát để thực hiện hành vi này! (" .. policeCount .. "/" .. Config.MinPolice .. ")",
+            type = "error",
+            position = "center-left"
+        })
+        sendToDiscord("Người chơi " .. playerName .. " (ID: " .. src .. ") thất bại khi móc túi: Không đủ cảnh sát (" .. policeCount .. "/" .. Config.MinPolice .. ").")
         return
     end
 
@@ -101,7 +124,9 @@ AddEventHandler('pickpocket:checkPolice', function(npcNetId)
         return
     end
 
+    isPickpocketActive = true -- Đánh dấu sự kiện đang diễn ra
     if math.random(1, 100) <= Config.PoliceAlertChance then
+        local policePlayers = ESX.GetExtendedPlayers('job', 'police')
         for _, police in pairs(policePlayers) do
             TriggerClientEvent('pickpocket:notifyPolice', police.source)
             TriggerClientEvent('pickpocket:setPoliceBlip', police.source, playerCoords)
@@ -110,8 +135,12 @@ AddEventHandler('pickpocket:checkPolice', function(npcNetId)
     end
 
     TriggerClientEvent('pickpocket:startProgress', src)
-    playerCooldowns[src] = currentTime
+    lastPickpocketTime = currentTime
     sendToDiscord("Người chơi " .. playerName .. " (ID: " .. src .. ") bắt đầu móc túi.")
+
+    -- Đặt lại trạng thái sau khi hoàn thành (2,5 phút progress bar)
+    Citizen.Wait(150000)
+    isPickpocketActive = false
 end)
 
 RegisterNetEvent('pickpocket:openBag')
@@ -121,8 +150,7 @@ AddEventHandler('pickpocket:openBag', function()
     if not xPlayer then return end
 
     local playerName = xPlayer.getName() or "Unknown"
-    local rewards = {"rolex", "diamond_ring", "lphone1"}
-    local reward = rewards[math.random(#rewards)]
+    local reward = getReward()
 
     local success = xPlayer.addInventoryItem(reward, 1)
     if success then
@@ -153,10 +181,3 @@ AddEventHandler('pickpocket:lostBag', function()
     local playerName = xPlayer.getName() or "Unknown"
     sendToDiscord("Người chơi " .. playerName .. " (ID: " .. src .. ") đã để mất túi do không mở kịp trong 30 phút.")
 end)
-
-function hasBlacklistedJob(job)
-    for _, blacklistedJob in ipairs(Config.BlacklistedJobs) do
-        if job == blacklistedJob then return true end
-    end
-    return false
-end
