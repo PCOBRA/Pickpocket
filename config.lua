@@ -5,7 +5,7 @@ Config.RestrictedZones = {
     -- Khu vực hình tròn
     {type = "circle", center = vector3(440.84, -983.14, 30.69), radius = 70.0}, -- Trụ sở cảnh sát
     {type = "circle", center = vector3(1853.23, 3687.49, 34.27), radius = 50.0}, -- Đồn cảnh sát Sandy Shores
-    {type = "circle", center = vector3(335.48, -582.64, 79.24), radius = 70.0}, -- Benh vien
+    {type = "circle", center = vector3(335.48, -582.64, 79.24), radius = 70.0}, -- Bệnh viện
     -- Khu vực đa giác (polyzone)
     {
         type = "polygon",
@@ -36,7 +36,7 @@ Config.RestrictedZones = {
     },
     {
         type = "polygon",
-        points = { -- Bãi Xe Benh Vien
+        points = { -- Bãi Xe Bệnh Viện
             vector3(356.24, -622.08, 28.96),
             vector3(347.24, -636.68, 29.2),
             vector3(320.6, -626.88, 29.28),
@@ -45,7 +45,7 @@ Config.RestrictedZones = {
     },
     {
         type = "polygon",
-        points = { -- Sanh truoc Benh Vien
+        points = { -- Sảnh trước Bệnh Viện
             vector3(296.84, -617.96, 43.44),
             vector3(290.92, -616.0, 43.44),
             vector3(290.44, -617.08, 43.44),
@@ -59,16 +59,14 @@ Config.RestrictedZones = {
     },
 }
 
-Config.Cooldown = {
-    enable = true,
-    time = 1800 -- Thời gian cooldown (giây)
-}
+Config.GlobalCooldown = 1800 -- 30 phút (1800 giây) giữa mỗi sự kiện móc túi
 Config.BlacklistedJobs = {"police", "ambulance", "sheriff"}
-Config.MinPolice = 0 -- Số lượng cảnh sát tối thiểu
-Config.RewardZones = {
-    downtown = {"rolex"},
-    beach = {"diamond_ring"},
-    random = {"lphone1"}
+Config.MinPolice = 2 -- Số lượng cảnh sát tối thiểu
+Config.Rewards = {
+    {item = "lockpick", chance = 5},       -- 5% (hiếm nhất)
+    {item = "diamond_ring", chance = 10},  -- 10%
+    {item = "rolex", chance = 25},         -- 25%
+    {item = "phone1", chance = 60}         -- 60% (dễ nhất)
 }
 Config.WebhookURL = 'YOUR_DISCORD_WEBHOOK_URL_HERE' -- Thay bằng URL webhook thực tế của bạn
 
